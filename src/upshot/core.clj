@@ -15,7 +15,27 @@
                                apply-options]])
   (:use [seesaw.config :only [Configurable config!* config*]])
   (:use [seesaw.util :only [illegal-argument]])
-  (:require [clojure.string]))
+  (:require [clojure.string]
+            [seesaw.selector]
+            [seesaw.util]))
+
+;*******************************************************************************
+
+(extend-protocol seesaw.selector/Selectable
+  javafx.scene.Node
+    (id-of* [this] (if-let [id (.getId this)] (keyword id)))
+    (id-of!* [this id] (.setId this (if id (name id))) this)
+    (class-of* [this] (set (.getStyleClass this)))
+    (class-of!* [this classes] 
+      (-> this 
+        .getStyleClass 
+        (.setAll (map name (if (coll? classes) classes [classes]))))))
+
+(extend-protocol seesaw.util/Children
+  javafx.scene.Parent
+    (children [this] (seq (.getChildrenUnmodifiable this))))
+
+;*******************************************************************************
 
 ; A hack to force initialization of the JavaFX toolkit. Otherwise, you
 ; can't do anything outside of an Application sub-class which isn't fun
@@ -41,6 +61,22 @@
 (defmacro run-now
   [& body]
   `(run-now* (fn [] ~@body)))
+;*******************************************************************************
+
+(defn- paint-handler [v]
+  (cond
+    (instance? javafx.scene.paint.Color) v
+    (instance? String v) (javafx.scene.paint.Color/web ^String v)
+    (keyword? v) (javafx.scene.paint.Color/web ^String (name v))
+    (vector? v)
+      (let [[a b c d] v
+            n         (count v)]
+        (case n
+          2 (javafx.scene.paint.Color/web (name a) b)
+          3 (javafx.scene.paint.Color/color a b c)
+          (javafx.scene.paint.Color/color a b c d)))))
+
+;*******************************************************************************
 
 (defn- dash-case
   [^String s]
@@ -65,11 +101,12 @@
         :event (if (= javafx.event.EventHandler type)
                   type)
         :type   type
+        :paint (= javafx.scene.paint.Paint type)
         :enum   (.getEnumConstants type) })))
 
 (defmacro options-for-class [class]
   `(option-map
-     ~@(for [{:keys [setter getter name event type enum]} (->> (resolve class)
+     ~@(for [{:keys [setter getter name event type enum paint]} (->> (resolve class)
               .getDeclaredMethods
               (remove #(.isSynthetic %))
               (filter #(let [ms (.getModifiers %)]
@@ -85,6 +122,11 @@
                       (fn [c# v#] (.. c# (~setter (to-event-handler v#))))
                       (fn [c#] (.. c# ~getter))
                       ["(fn [event] ...)"])
+           paint `(default-option
+                      ~name
+                      (fn [c# v#] (.. c# (~setter (paint-handler v#))))
+                      (fn [c#] (.. c# ~getter))
+                      [:white [:white 0.5] [1 1 1] [1 1 1 0.5]])
            enum `(let [set-conv# ~(into {} (for [e enum]
                                              [(keyword (dash-case (.name e)))
                                               (symbol (.getName type) (.name e)) ]))
@@ -149,7 +191,18 @@
 
 ;*******************************************************************************
 
-(def node-options (options-for-class javafx.scene.Node))
+(def node-options 
+  (merge
+    (options-for-class javafx.scene.Node)
+    (option-map
+      (default-option :id
+        seesaw.selector/id-of!
+        seesaw.selector/id-of
+        "A keyword id")
+      (default-option :class
+        seesaw.selector/class-of!
+        seesaw.selector/class-of
+        "A keyword class or set of keywords"))))
 
 ;*******************************************************************************
 
@@ -198,11 +251,11 @@
                                      (circle :radius (* 10 i) 
                                              :center-x (* 10 i)
                                              :center-y (* 10 i)
-                                             :fill     (javafx.scene.paint.Color/web "white" 0.05)
+                                             :fill     [:white 0.05]
                                              :stroke-type :outside 
-                                             :stroke (javafx.scene.paint.Color/web "white" 0.16)
+                                             :stroke  [:white 0.16]
                                              :stroke-width 4)))
                  :width 800.0 :height 600.0 
-                 :fill javafx.scene.paint.Color/BLACK))
+                 :fill :black))
       .show)))
 
