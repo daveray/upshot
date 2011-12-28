@@ -9,16 +9,19 @@
 ;   You must not remove this notice, or any other, from this software.
 
 (ns upshot.core
-  (:use [seesaw.options :only [option-provider option-map apply-options
-                               default-option OptionProvider
+  (:use [seesaw.options :only [option-provider 
+                               option-map
+                               default-option 
                                get-option-value
                                apply-options]])
   (:use [seesaw.config :only [Configurable config!* config*]])
   (:use [seesaw.util :only [check-args illegal-argument]])
-  (:require [clojure.string]
+  (:use [upshot.options :only [options-for-class defobject]])
+  (:require [clojure.set]
             [seesaw.selector]
             [seesaw.selection]
-            [seesaw.util]))
+            [upshot.events]
+            [upshot.paint]))
 
 ;*******************************************************************************
 
@@ -83,106 +86,6 @@
 
 ;*******************************************************************************
 
-(defn- paint-handler [v]
-  (cond
-    (instance? javafx.scene.paint.Paint) v
-    (instance? String v) (javafx.scene.paint.Color/web ^String v)
-    (keyword? v) (javafx.scene.paint.Color/web ^String (name v))
-    (vector? v)
-      (let [[a b c d] v
-            n         (count v)]
-        (case n
-          2 (javafx.scene.paint.Color/web (name a) b)
-          3 (javafx.scene.paint.Color/color a b c)
-          (javafx.scene.paint.Color/color a b c d)))))
-
-;*******************************************************************************
-
-(defn- dash-case
-  [^String s]
-  (let [gsub (fn [s re sub] (.replaceAll (re-matcher re s) sub))]
-    (-> s
-      (gsub #"([A-Z]+)([A-Z][a-z])" "$1-$2")
-      (gsub #"([a-z]+)([A-Z])" "$1-$2")
-      (clojure.string/lower-case)))) 
-
-(declare to-event-handler)
-(defn- get-option-info [m]
-  (if (and (= 1 (count (.getParameterTypes m)))
-          (.matches (.getName m) "^set[A-Z].*"))
-    (let [base-name (.substring (.getName m) 3)
-          type      (first (.getParameterTypes m))
-          dash-name (dash-case base-name)]
-      { :setter (symbol  (.getName m))
-        :getter (symbol  (str "get" base-name))
-        :name   (keyword (if (= Boolean/TYPE type)
-                           (str dash-name "?")
-                           dash-name))
-        :event (if (= javafx.event.EventHandler type)
-                  type)
-        :type   type
-        :paint (= javafx.scene.paint.Paint type)
-        :enum   (.getEnumConstants type) })))
-
-(defmacro options-for-class [class]
-  `(option-map
-     ~@(for [{:keys [setter getter name event type enum paint]} (->> (resolve class)
-              .getDeclaredMethods
-              (remove #(.isSynthetic %))
-              (filter #(let [ms (.getModifiers %)]
-                         (= java.lang.reflect.Modifier/PUBLIC 
-                            (bit-and ms
-                                     (bit-or java.lang.reflect.Modifier/PUBLIC
-                                             java.lang.reflect.Modifier/STATIC)))))
-              (map get-option-info)
-              (filter identity))]
-         (cond
-           event `(default-option
-                      ~name
-                      (fn [c# v#] (.. c# (~setter (to-event-handler v#))))
-                      (fn [c#] (.. c# ~getter))
-                      ["(fn [event] ...)"])
-           paint `(default-option
-                      ~name
-                      (fn [c# v#] (.. c# (~setter (paint-handler v#))))
-                      (fn [c#] (.. c# ~getter))
-                      [:white [:white 0.5] [1 1 1] [1 1 1 0.5]])
-           enum `(let [set-conv# ~(into {} (for [e enum]
-                                             [(keyword (dash-case (.name e)))
-                                              (symbol (.getName type) (.name e)) ]))
-                       get-conv# (clojure.set/map-invert set-conv#)] 
-                   (default-option
-                      ~name
-                      (fn [c# v#] (.. c# (~setter (set-conv# v#))))
-                      (fn [c#]    (get-conv# (.. c# ~getter)))
-                     (keys set-conv#)))
-           :else `(default-option
-                      ~name
-                      (fn [c# v#] (.. c# (~setter v#)))
-                      (fn [c#] (.. c# ~getter))
-                      [~type])))))
-
-;*******************************************************************************
-
-; A macro to handle most of the boilerplate for each kind of object
-(defmacro defobject [func-name class base-options extra-options] 
-  (let [opts-name (symbol (str (name func-name) "-options"))]
-    `(do 
-       (def ~opts-name 
-         (merge
-           ~@base-options
-           (options-for-class ~class)
-           ~@extra-options))
-
-       (option-provider ~class ~opts-name)
-
-       (defn ~func-name 
-         [& opts#] 
-         (apply-options (new ~class) opts#))
-       ))) 
-
-;*******************************************************************************
-
 (extend-protocol Configurable
   javafx.stage.Stage
     (config* [this name] (get-option-value this name))
@@ -198,25 +101,10 @@
 
 (def ^{:doc (str "Alias of seesaw.config/config!:\n" (:doc (meta #'seesaw.config/config!)))} config! seesaw.config/config!)
 
-(defn event-handler* 
-  [f] 
-  (reify javafx.event.EventHandler 
-    (handle [this e] (f e))))
-
-(defmacro event-handler [arg & body]
-  `(event-handler* (fn ~arg ~@body)))
-
-(defn to-event-handler [v]
-  (cond
-    (instance? javafx.event.EventHandler v) v
-    (fn? v) (event-handler* v)
-    :else (illegal-argument "Don't know how to make event-handler from %s" v)))
 
 ;*******************************************************************************
 
-(def stage-options (options-for-class javafx.stage.Stage))
-(option-provider javafx.stage.Stage stage-options)
-(defn stage [& opts] (apply-options (javafx.stage.Stage.) opts))
+(defobject stage javafx.stage.Stage [] [])
 
 ;*******************************************************************************
 
@@ -380,6 +268,7 @@
 (defn selection!
   ([target new-selection] (selection! target {} new-selection))
   ([target opts new-selection] (seesaw.selection/selection! target opts new-selection)))
+
 
 ;*******************************************************************************
 
