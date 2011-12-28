@@ -14,9 +14,10 @@
                                get-option-value
                                apply-options]])
   (:use [seesaw.config :only [Configurable config!* config*]])
-  (:use [seesaw.util :only [illegal-argument]])
+  (:use [seesaw.util :only [check-args illegal-argument]])
   (:require [clojure.string]
             [seesaw.selector]
+            [seesaw.selection]
             [seesaw.util]))
 
 ;*******************************************************************************
@@ -32,8 +33,26 @@
         (.setAll (map name (if (coll? classes) classes [classes]))))))
 
 (extend-protocol seesaw.util/Children
+  javafx.scene.Node
+    (children [this] nil)
   javafx.scene.Parent
     (children [this] (seq (.getChildrenUnmodifiable this))))
+
+; TOOD make this real
+(defn- to-node [v]
+  (cond
+    (instance? javafx.scene.Node v) v
+    (instance? javafx.scene.Scene v) (.getRoot v)
+    (instance? javafx.stage.Stage v) (-> v .getScene .getRoot)))
+
+(defn select
+  ([root selector]
+    (check-args (vector? selector) "selector must be vector")
+    (let [root (to-node root)
+          result (seesaw.selector/select root selector)
+          id? (and (nil? (second selector)) (seesaw.selector/id-selector? (first selector)))]
+
+      (if id? (first result) result))))
 
 ;*******************************************************************************
 
@@ -61,11 +80,12 @@
 (defmacro run-now
   [& body]
   `(run-now* (fn [] ~@body)))
+
 ;*******************************************************************************
 
 (defn- paint-handler [v]
   (cond
-    (instance? javafx.scene.paint.Color) v
+    (instance? javafx.scene.paint.Paint) v
     (instance? String v) (javafx.scene.paint.Color/web ^String v)
     (keyword? v) (javafx.scene.paint.Color/web ^String (name v))
     (vector? v)
@@ -144,6 +164,25 @@
 
 ;*******************************************************************************
 
+; A macro to handle most of the boilerplate for each kind of object
+(defmacro defobject [func-name class base-options extra-options] 
+  (let [opts-name (symbol (str (name func-name) "-options"))]
+    `(do 
+       (def ~opts-name 
+         (merge
+           ~@base-options
+           (options-for-class ~class)
+           ~@extra-options))
+
+       (option-provider ~class ~opts-name)
+
+       (defn ~func-name 
+         [& opts#] 
+         (apply-options (new ~class) opts#))
+       ))) 
+
+;*******************************************************************************
+
 (extend-protocol Configurable
   javafx.stage.Stage
     (config* [this name] (get-option-value this name))
@@ -205,42 +244,148 @@
         "A keyword class or set of keywords"))))
 
 ;*******************************************************************************
+(def ^:private children-option
+  (default-option :children
+    (fn [g v]
+      (-> g .getChildren (.setAll v)))
+    (fn [g] (-> g .getChildren))
+    ["A seq of nodes"]))
 
-(def group-options
-  (merge
-    node-options
-    (option-map
-      (default-option :children
-        (fn [g v]
-          (-> g .getChildren (.setAll v)))
-        (fn [g] (-> g .getChildren))))))
-
-(option-provider javafx.scene.Group group-options)
-
-(defn group [& opts] (apply-options (javafx.scene.Group.) opts))
+(defobject group javafx.scene.Group 
+  [node-options]
+  [(option-map children-option)])
 
 ;*******************************************************************************
+
+(def region-options
+  (merge
+    node-options
+    (options-for-class javafx.scene.layout.Region)))
+
+(defobject pane javafx.scene.layout.Pane [region-options] 
+  [(option-map children-option)])
+
+(defobject border-pane javafx.scene.layout.BorderPane [pane-options] [])
+(defobject flow-pane javafx.scene.layout.FlowPane [pane-options] [])
+(defobject h-box javafx.scene.layout.HBox [pane-options] [])
+(defobject v-box javafx.scene.layout.VBox [pane-options] [])
+(defobject tile-pane javafx.scene.layout.TilePane [pane-options] [])
+
+;*******************************************************************************
+
+(defobject web-view javafx.scene.web.WebView [node-options] 
+  [(option-map
+     (default-option
+       :url
+       (fn [v url] (-> v .getEngine (.load url)))
+       (fn [v] (-> v .getEngine .getLocation))
+       "Displayed URL as a string")
+     (default-option :engine
+       nil
+       (fn [v] (.getEngine v))))])
+
+;*******************************************************************************
+
 (def shape-options
   (merge
     node-options
     (options-for-class javafx.scene.shape.Shape)))
 
+(defobject circle javafx.scene.shape.Circle [shape-options] [])
+(defobject rectangle javafx.scene.shape.Rectangle [shape-options] [])
+(defobject arc javafx.scene.shape.Arc [shape-options] [])
+(defobject ellipse javafx.scene.shape.Ellipse [shape-options] [])
+(defobject line javafx.scene.shape.Line [shape-options] [])
+(defobject svg-path javafx.scene.shape.SVGPath [shape-options] [])
+
 ;*******************************************************************************
 
-(def circle-options
+(def control-options
   (merge
-    shape-options
-    (options-for-class javafx.scene.shape.Circle)))
+    node-options
+    (options-for-class javafx.scene.control.Control)))
 
-(option-provider javafx.scene.shape.Circle circle-options)
+(defobject accordion javafx.scene.control.Accordion [control-options] 
+  [(option-map
+      (default-option :panes
+        (fn [g v]
+          (-> g 
+            .getPanes 
+            (.setAll v)))
+        (fn [g] (-> g .getPanes))
+        "seq of (titled-pane)"))])
 
-(defn circle 
-  [& opts] 
-  (apply-options (javafx.scene.shape.Circle.) opts))
+(defobject choice-box javafx.scene.control.ChoiceBox [control-options] 
+  [(option-map
+      (default-option :items
+        (fn [g v]
+          (-> g 
+            .getItems 
+            (.setAll v)))
+        (fn [g] (-> g .getItems))
+        "seq of items to choose from"))])
+
+(def labeled-options
+  (merge
+    control-options
+    (options-for-class javafx.scene.control.Labeled)))
+
+(defobject label javafx.scene.control.Label [labeled-options] [])
+(defobject titled-pane javafx.scene.control.TitledPane [labeled-options] [])
+
+(def button-base-options
+  (merge
+    labeled-options 
+    (options-for-class javafx.scene.control.ButtonBase)))
+
+(defobject button javafx.scene.control.Button [button-base-options] [])
+(defobject check-box javafx.scene.control.CheckBox [button-base-options] [])
+(defobject hyperlink javafx.scene.control.Hyperlink [button-base-options] [])
+(defobject menu-button javafx.scene.control.MenuButton [button-base-options] [])
+(defobject button javafx.scene.control.Button [button-base-options] [])
+(defobject toggle-button javafx.scene.control.ToggleButton [button-base-options] [])
+
+(def text-input-control-options 
+  (merge
+    control-options
+    (options-for-class javafx.scene.control.TextInputControl)))
+
+(defobject text-field javafx.scene.control.TextField [text-input-control-options] [])
+(defobject password-field javafx.scene.control.PasswordField [text-field-options] [])
+(defobject text-area javafx.scene.control.TextArea [text-input-control-options] [])
+
+(defobject html-editor javafx.scene.web.HTMLEditor [control-options] [])
+
+;*******************************************************************************
+(extend-protocol seesaw.selection/Selection
+  javafx.scene.control.SingleSelectionModel
+    (get-selection [this] [(.getSelectedItem this)])
+    (set-selection [this [v]]
+      (if v
+        (.select this v)
+        (.clearSelection this)))
+
+  javafx.scene.control.ChoiceBox
+    (get-selection [this] (seesaw.selection/get-selection (.getSelectionModel this)))
+    (set-selection [this args] (seesaw.selection/set-selection (.getSelectionModel this) args))
+  
+  
+  )
+
+(defn selection
+  ([target] (selection target {}))
+  ([target options] 
+   (seesaw.selection/selection target options)))
+
+(defn selection!
+  ([target new-selection] (selection! target {} new-selection))
+  ([target opts new-selection] (seesaw.selection/selection! target opts new-selection)))
 
 ;*******************************************************************************
 
-
+; TODO Value stuff
+ 
+;*******************************************************************************
 (comment
   (run-now 
     (doto 
