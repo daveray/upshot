@@ -17,6 +17,8 @@ JavaFX isn't in Maven and, as a special bonus, has native deps. So, you'll need 
     # Now run the example (test/upshot/test/examples/example.clj)
     lein run -m upshot.test.examples.example
 
+**Theading Note:** JavaFX is much pickier than Swing about code executing correctly on the JavaFX thread. So, most interactions at the REPL should be wrapped in the `(upshot.core/run-now)` macro.
+
 ## License
 
 Copyright (C) 2012 Dave Ray
