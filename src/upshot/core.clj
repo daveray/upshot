@@ -15,7 +15,7 @@
                                get-option-value
                                apply-options]])
   (:use [seesaw.config :only [Configurable config!* config*]])
-  (:use [seesaw.util :only [check-args illegal-argument]])
+  (:use [seesaw.util :only [check-args illegal-argument cond-doto]])
   (:use [upshot.options :only [options-for-class defobject]])
   (:require [clojure.set]
             [seesaw.selector]
@@ -42,11 +42,14 @@
     (children [this] (seq (.getChildrenUnmodifiable this))))
 
 ; TOOD make this real
-(defn- to-node [v]
+(defn to-node [v]
   (cond
+    (instance? javafx.event.Event v) (to-node (.getSource v))
     (instance? javafx.scene.Node v) v
     (instance? javafx.scene.Scene v) (.getRoot v)
     (instance? javafx.stage.Stage v) (-> v .getScene .getRoot)))
+
+(defn to-scene [v] (-> v to-node .getScene))
 
 (defn select
   ([root selector]
@@ -129,7 +132,15 @@
       (default-option :class
         seesaw.selector/class-of!
         seesaw.selector/class-of
-        "A keyword class or set of keywords"))))
+        "A keyword class or set of keywords")
+      (default-option :parent
+        nil
+        #(.getParent ^javafx.scene.Node %)
+        "javafx.scene.Parent (read-only)")
+      (default-option :scene
+        nil
+        #(.getScene ^javafx.scene.Node %)
+        "javafx.scene.Scene (read-only)"))))
 
 ;*******************************************************************************
 (def ^:private children-option
@@ -158,6 +169,25 @@
 (defobject h-box javafx.scene.layout.HBox [pane-options] [])
 (defobject v-box javafx.scene.layout.VBox [pane-options] [])
 (defobject tile-pane javafx.scene.layout.TilePane [pane-options] [])
+
+(defn- add-to-anchor-pane [ap n & {:keys [top bottom left right]}]
+  (let [cp (.getChildren ap)]
+    (.add cp n)
+    (when top    (javafx.scene.layout.AnchorPane/setTopAnchor n (double top)))
+    (when bottom (javafx.scene.layout.AnchorPane/setBottomAnchor n (double bottom)))
+    (when left   (javafx.scene.layout.AnchorPane/setLeftAnchor n (double left)))
+    (when right  (javafx.scene.layout.AnchorPane/setRightAnchor n (double right))))
+  ap)
+
+(defobject anchor-pane javafx.scene.layout.AnchorPane 
+  [pane-options]
+  [(option-map
+     (default-option :children
+       (fn [ap kids]
+         (.clear (.getChildren ap))
+         (doseq [k kids]
+           (apply add-to-anchor-pane ap k))) 
+       (:getter (:children pane-options))))])
 
 ;*******************************************************************************
 
