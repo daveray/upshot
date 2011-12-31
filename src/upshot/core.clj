@@ -170,24 +170,23 @@
 (defobject v-box javafx.scene.layout.VBox [pane-options] [])
 (defobject tile-pane javafx.scene.layout.TilePane [pane-options] [])
 
-(defn- add-to-anchor-pane [ap n & {:keys [top bottom left right]}]
-  (let [cp (.getChildren ap)]
-    (.add cp n)
-    (when top    (javafx.scene.layout.AnchorPane/setTopAnchor n (double top)))
-    (when bottom (javafx.scene.layout.AnchorPane/setBottomAnchor n (double bottom)))
-    (when left   (javafx.scene.layout.AnchorPane/setLeftAnchor n (double left)))
-    (when right  (javafx.scene.layout.AnchorPane/setRightAnchor n (double right))))
-  ap)
+(defn anchors! [^javafx.scene.Node n & {:keys [top bottom left right]}]
+  (when top    (javafx.scene.layout.AnchorPane/setTopAnchor n (double top)))
+  (when bottom (javafx.scene.layout.AnchorPane/setBottomAnchor n (double bottom)))
+  (when left   (javafx.scene.layout.AnchorPane/setLeftAnchor n (double left)))
+  (when right  (javafx.scene.layout.AnchorPane/setRightAnchor n (double right)))
+  n)
+
+(defn anchors [^javafx.scene.Node n]
+  { :top    (javafx.scene.layout.AnchorPane/getTopAnchor n)
+    :bottom (javafx.scene.layout.AnchorPane/getBottomAnchor n)
+    :left   (javafx.scene.layout.AnchorPane/getLeftAnchor n)
+    :right  (javafx.scene.layout.AnchorPane/getRightAnchor n)
+  })
 
 (defobject anchor-pane javafx.scene.layout.AnchorPane 
   [pane-options]
-  [(option-map
-     (default-option :children
-       (fn [ap kids]
-         (.clear (.getChildren ap))
-         (doseq [k kids]
-           (apply add-to-anchor-pane ap k))) 
-       (:getter (:children pane-options))))])
+  [])
 
 ;*******************************************************************************
 
