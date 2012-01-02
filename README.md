@@ -19,6 +19,11 @@ JavaFX isn't in Maven and, as a special bonus, has native deps. So, you'll need 
 
 **Theading Note:** JavaFX is much pickier than Swing about code executing correctly on the JavaFX thread. So, most interactions at the REPL should be wrapped in the `(upshot.core/run-now)` macro.
 
+### Running the Tests
+I'm giving Midje a try:
+
+    lein midje
+
 ## License
 
 Copyright (C) 2012 Dave Ray

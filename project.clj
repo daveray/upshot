@@ -9,4 +9,6 @@
                  [seesaw "1.3.1-SNAPSHOT"]
                  [com.oracle/javafx-runtime "2.0"]]
   :dev-dependencies [[midje "1.3.1"]
+                     [lein-midje "1.0.7"]
+                     [com.intelie/lazytest "1.0.0-SNAPSHOT"]
                      [lein-clojars "0.7.0"]])
