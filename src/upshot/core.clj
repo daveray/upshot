@@ -131,7 +131,7 @@
         "A keyword id")
       (default-option :class
         seesaw.selector/class-of!
-        seesaw.selector/class-of
+        #(->> % seesaw.selector/class-of (map keyword) set)
         "A keyword class or set of keywords")
       (default-option :parent
         nil

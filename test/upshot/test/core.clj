@@ -51,6 +51,17 @@
                                             :left 3.0 :right 4.0)])]
     (config ap :children) => [b]
     (anchors b) => { :top 1.0 :bottom 2.0 :left 3.0 :right 4.0}))
+
+(facts "about border-pane"
+  (class (border-pane)) => javafx.scene.layout.BorderPane
+  (let [t (button) b (button) l (button) r (button)
+        bp (border-pane :top t :bottom b :left l :right r)]
+    (config bp :top) => t
+    (config bp :bottom) => b
+    (config bp :left) => l
+    (config bp :right) => r
+    (config bp :children) => [t b l r]))
+
 ;*******************************************************************************
 
 (facts "about circle"
@@ -95,10 +106,20 @@
 ;*******************************************************************************
 
 (facts "about accordion"
-  (class (accordion)) => javafx.scene.control.Accordion)
+  (class (accordion)) => javafx.scene.control.Accordion
+  (run-now
+    (let [tp1 (titled-pane)
+          tp2 (titled-pane)
+          a  (accordion :panes [tp1 tp2])]
+      (config a :panes) => [tp1 tp2])))
 
 (facts "about choice-box"
-  (class (choice-box :items [1 2 3])) => javafx.scene.control.ChoiceBox)
+  (class (choice-box :items [1 2 3])) => javafx.scene.control.ChoiceBox
+  (run-now
+    (let [cb (choice-box :items [1 2 3])]
+      (selection cb) => nil
+      (selection! cb 1) => cb
+      (selection cb) => 1)))
 
 (facts "about label"
   (class (label :text "hi")) => javafx.scene.control.Label)
@@ -138,6 +159,12 @@
     (class (html-editor))) => javafx.scene.web.HTMLEditor)
 
 ;*******************************************************************************
+
+(facts "common node options"
+  (config (button :id :this-is-the-id) :id) => :this-is-the-id
+  (config (button :class :one-class) :class) => #{:one-class}
+  (config (button :class #{:two :classes}) :class) => #{:two :classes}
+  (config (label :user-data :foo) :user-data) => :foo)
 
 (facts "about select"
   (let [b (button :id :b :class :foo)
