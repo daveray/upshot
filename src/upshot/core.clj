@@ -107,7 +107,13 @@
 
 ;*******************************************************************************
 
-(defobject stage javafx.stage.Stage [] [])
+(def window-options (options-for-class javafx.stage.Window))
+#_(def stage-options
+  (merge
+    window-options
+    (options-for-class javafx.stage.Stage)))
+
+(defobject stage javafx.stage.Stage [window-options] [])
 
 ;*******************************************************************************
 
