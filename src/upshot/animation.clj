@@ -2,7 +2,7 @@
 
 ;   The use and distribution terms for this software are covered by the
 ;   Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
-;   which can be found in the file epl-v10.html at the root of this 
+;   which can be found in the file epl-v10.html at the root of this
 ;   distribution.
 ;   By using this software in any fashion, you are agreeing to be bound by
 ;   the terms of this license.
@@ -10,22 +10,23 @@
 
 (ns upshot.animation
   (:use [upshot.options :only [options-for-class]]
+        [upshot.events :only [to-event-handler]]
         [seesaw.options :only [apply-options option-provider]])
   (:require [clojure.set]
             [seesaw.util]))
 
 ;*******************************************************************************
 
-(defmacro property 
+(defmacro property
   [this prop-name]
   (let [getter (-> prop-name name seesaw.util/camelize (str "Property") symbol)]
     `(. ~this ~getter)))
 
-(defn key-value 
+(defn key-value
   ([target end] (javafx.animation.KeyValue. target end))
   ([target end interp] (javafx.animation.KeyValue. target end interp)))
 
-(defn to-key-value 
+(defn to-key-value
   [v]
   (cond
     (instance? javafx.animation.KeyValue v) v
@@ -33,17 +34,20 @@
 
 ;*******************************************************************************
 
-(defn to-duration 
+(defn to-duration
   [v]
-  (cond 
+  (cond
     (instance? javafx.util.Duration v) v)
     :else (javafx.util.Duration/seconds (double v)))
 
 (defn key-frame
-  [time & values]
-  (javafx.animation.KeyFrame. 
-    (to-duration time) 
-    (into-array javafx.animation.KeyValue (map to-key-value values))))
+  [& args]
+  (let [values (take-while (complement keyword) args)
+        {:keys [time on-finished]}   (apply hash-map (drop-while (complement keyword) args))]
+    (javafx.animation.KeyFrame.
+      (to-duration (or time 0.0))
+      (to-event-handler (or on-finished (fn [_])))
+      (into-array javafx.animation.KeyValue (map to-key-value values)))))
 
 (defn to-key-frame
   [v]
@@ -67,17 +71,17 @@
         opts   (drop-while (complement keyword) args)]
     (apply-options
       (javafx.animation.Timeline.
-        (into-array 
-          javafx.animation.KeyFrame 
-          (map to-key-frame frames))) 
+        (into-array
+          javafx.animation.KeyFrame
+          (map to-key-frame frames)))
       opts)))
 
-(defn play! 
+(defn play!
   [^javafx.animation.Animation a]
   (.play a)
   a)
 
-(defn stop! 
+(defn stop!
   [^javafx.animation.Timeline tl]
   (.stop tl)
   tl)

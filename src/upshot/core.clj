@@ -2,16 +2,16 @@
 
 ;   The use and distribution terms for this software are covered by the
 ;   Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
-;   which can be found in the file epl-v10.html at the root of this 
+;   which can be found in the file epl-v10.html at the root of this
 ;   distribution.
 ;   By using this software in any fashion, you are agreeing to be bound by
 ;   the terms of this license.
 ;   You must not remove this notice, or any other, from this software.
 
 (ns upshot.core
-  (:use [seesaw.options :only [option-provider 
+  (:use [seesaw.options :only [option-provider
                                option-map
-                               default-option 
+                               default-option
                                get-option-value
                                apply-options]])
   (:use [seesaw.config :only [Configurable config!* config*]])
@@ -30,9 +30,9 @@
     (id-of* [this] (if-let [id (.getId this)] (keyword id)))
     (id-of!* [this id] (.setId this (if id (name id))) this)
     (class-of* [this] (set (.getStyleClass this)))
-    (class-of!* [this classes] 
-      (-> this 
-        .getStyleClass 
+    (class-of!* [this classes]
+      (-> this
+        .getStyleClass
         (.setAll (map name (if (coll? classes) classes [classes]))))))
 
 (extend-protocol seesaw.util/Children
@@ -68,7 +68,7 @@
 ; TODO do something else.
 (defonce force-toolkit-init (javafx.embed.swing.JFXPanel.))
 
-(defn run-later* 
+(defn run-later*
   [f]
   (javafx.application.Platform/runLater f))
 
@@ -76,7 +76,7 @@
   [& body]
   `(run-later* (fn [] ~@body)))
 
-(defn run-now* 
+(defn run-now*
   [f]
   (let [result (promise)]
     (run-later
@@ -96,7 +96,7 @@
   javafx.scene.Scene
     (config* [this name] (get-option-value this name))
     (config!* [this args] (apply-options this args))
-  javafx.scene.Node 
+  javafx.scene.Node
     (config* [this name] (get-option-value this name))
     (config!* [this args] (apply-options this args)))
 
@@ -119,15 +119,15 @@
 
 (def scene-options (options-for-class javafx.scene.Scene))
 (option-provider javafx.scene.Scene scene-options)
-(defn scene [& {:keys [root width height] 
-                :or {width 0.0 height 0.0} 
-                :as opts}] 
-  (apply-options (javafx.scene.Scene. root width height) 
+(defn scene [& {:keys [root width height]
+                :or {width 0.0 height 0.0}
+                :as opts}]
+  (apply-options (javafx.scene.Scene. root width height)
                  (dissoc opts :root :width :height)))
 
 ;*******************************************************************************
 
-(def node-options 
+(def node-options
   (merge
     (options-for-class javafx.scene.Node)
     (option-map
@@ -156,7 +156,7 @@
     (fn [g] (-> g .getChildren))
     ["A seq of nodes"]))
 
-(defobject group javafx.scene.Group 
+(defobject group javafx.scene.Group
   [node-options]
   [(option-map children-option)])
 
@@ -167,7 +167,7 @@
     node-options
     (options-for-class javafx.scene.layout.Region)))
 
-(defobject pane javafx.scene.layout.Pane [region-options] 
+(defobject pane javafx.scene.layout.Pane [region-options]
   [(option-map children-option)])
 
 (defobject border-pane javafx.scene.layout.BorderPane [pane-options] [])
@@ -175,6 +175,7 @@
 (defobject h-box javafx.scene.layout.HBox [pane-options] [])
 (defobject v-box javafx.scene.layout.VBox [pane-options] [])
 (defobject tile-pane javafx.scene.layout.TilePane [pane-options] [])
+(defobject stack-pane javafx.scene.layout.StackPane [pane-options] [])
 
 (defn anchors! [^javafx.scene.Node n & {:keys [top bottom left right]}]
   (when top    (javafx.scene.layout.AnchorPane/setTopAnchor n (double top)))
@@ -190,13 +191,13 @@
     :right  (javafx.scene.layout.AnchorPane/getRightAnchor n)
   })
 
-(defobject anchor-pane javafx.scene.layout.AnchorPane 
+(defobject anchor-pane javafx.scene.layout.AnchorPane
   [pane-options]
   [])
 
 ;*******************************************************************************
 
-(defobject web-view javafx.scene.web.WebView [node-options] 
+(defobject web-view javafx.scene.web.WebView [node-options]
   [(option-map
      (default-option
        :url
@@ -220,6 +221,7 @@
 (defobject ellipse javafx.scene.shape.Ellipse [shape-options] [])
 (defobject line javafx.scene.shape.Line [shape-options] [])
 (defobject svg-path javafx.scene.shape.SVGPath [shape-options] [])
+(defobject text javafx.scene.text.Text [shape-options] [])
 
 ;*******************************************************************************
 
@@ -228,22 +230,22 @@
     node-options
     (options-for-class javafx.scene.control.Control)))
 
-(defobject accordion javafx.scene.control.Accordion [control-options] 
+(defobject accordion javafx.scene.control.Accordion [control-options]
   [(option-map
       (default-option :panes
         (fn [g v]
-          (-> g 
-            .getPanes 
+          (-> g
+            .getPanes
             (.setAll v)))
         (fn [g] (-> g .getPanes))
         "seq of (titled-pane)"))])
 
-(defobject choice-box javafx.scene.control.ChoiceBox [control-options] 
+(defobject choice-box javafx.scene.control.ChoiceBox [control-options]
   [(option-map
       (default-option :items
         (fn [g v]
-          (-> g 
-            .getItems 
+          (-> g
+            .getItems
             (.setAll v)))
         (fn [g] (-> g .getItems))
         "seq of items to choose from"))])
@@ -258,7 +260,7 @@
 
 (def button-base-options
   (merge
-    labeled-options 
+    labeled-options
     (options-for-class javafx.scene.control.ButtonBase)))
 
 (defobject button javafx.scene.control.Button [button-base-options] [])
@@ -268,7 +270,7 @@
 (defobject button javafx.scene.control.Button [button-base-options] [])
 (defobject toggle-button javafx.scene.control.ToggleButton [button-base-options] [])
 
-(def text-input-control-options 
+(def text-input-control-options
   (merge
     control-options
     (options-for-class javafx.scene.control.TextInputControl)))
@@ -291,13 +293,13 @@
   javafx.scene.control.ChoiceBox
     (get-selection [this] (seesaw.selection/get-selection (.getSelectionModel this)))
     (set-selection [this args] (seesaw.selection/set-selection (.getSelectionModel this) args))
-  
-  
+
+
   )
 
 (defn selection
   ([target] (selection target {}))
-  ([target options] 
+  ([target options]
    (seesaw.selection/selection target options)))
 
 (defn selection!
@@ -308,23 +310,23 @@
 ;*******************************************************************************
 
 ; TODO Value stuff
- 
+
 ;*******************************************************************************
 (comment
-  (run-now 
-    (doto 
-      (stage 
-        :scene (scene 
+  (run-now
+    (doto
+      (stage
+        :scene (scene
                  :root (group
                          :children (for [i (range 30)]
-                                     (circle :radius (* 10 i) 
+                                     (circle :radius (* 10 i)
                                              :center-x (* 10 i)
                                              :center-y (* 10 i)
                                              :fill     [:white 0.05]
-                                             :stroke-type :outside 
+                                             :stroke-type :outside
                                              :stroke  [:white 0.16]
                                              :stroke-width 4)))
-                 :width 800.0 :height 600.0 
+                 :width 800.0 :height 600.0
                  :fill :black))
       .show)))
 
