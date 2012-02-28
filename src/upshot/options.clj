@@ -21,6 +21,7 @@
     (-> s
       (gsub #"([A-Z]+)([A-Z][a-z])" "$1-$2")
       (gsub #"([a-z]+)([A-Z])" "$1-$2")
+      (.replace "_" "-")
       (clojure.string/lower-case)))) 
 
 (defn- get-option-info [m]
@@ -74,7 +75,8 @@
                        get-conv# (clojure.set/map-invert set-conv#)] 
                    (default-option
                       ~name
-                      (fn [c# v#] (.. c# (~setter (set-conv# v#))))
+                      (fn [c# v#] 
+                        (.. c# (~setter (set-conv# v# v#))))
                       (fn [c#]    (get-conv# (.. c# ~getter)))
                      (keys set-conv#)))
            :else `(default-option

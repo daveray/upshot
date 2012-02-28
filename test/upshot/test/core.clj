@@ -11,7 +11,7 @@
     (config a :parent) => g))
 
 (facts "about members of a scene"
-  (run-now 
+  (run-now
     (let [a (button)
           s (scene :root a)]
       (config a :scene) => s
@@ -46,7 +46,7 @@
 (facts "about anchor-pane"
   (class (anchor-pane)) => javafx.scene.layout.AnchorPane
   (let [b (button)
-        ap (anchor-pane :children [(anchors! b 
+        ap (anchor-pane :children [(anchors! b
                                             :top 1.0 :bottom 2.0
                                             :left 3.0 :right 4.0)])]
     (config ap :children) => [b]
@@ -65,17 +65,17 @@
 ;*******************************************************************************
 
 (facts "about circle"
-  (let [c (circle :id :hi :radius 20 :center-x 5.0 :center-y 6.0)] 
+  (let [c (circle :id :hi :radius 20 :center-x 5.0 :center-y 6.0)]
     (class c) => javafx.scene.shape.Circle
     (config c :radius)   => 20.0
     (config c :center-x) => 5.0
     (config c :center-y) => 6.0))
 
 (facts "about rectangle"
-  (let [r (rectangle :id :hi 
-                     :x 1.0 :y 2.0 
+  (let [r (rectangle :id :hi
+                     :x 1.0 :y 2.0
                      :width 3.0 :height 4.0
-                     :arc-width 0.3 :arc-height 0.4)] 
+                     :arc-width 0.3 :arc-height 0.4)]
     (class r) => javafx.scene.shape.Rectangle
     (config r :x) => 1.0
     (config r :y) => 2.0
@@ -85,7 +85,7 @@
     (config r :arc-height) => 0.4))
 
 (facts "about arc"
-  (let [a (arc :id :hi 
+  (let [a (arc :id :hi
                :type :chord :length 5.0
                :radius-x 3.0 :radius-y 4.0)]
     (class a) => javafx.scene.shape.Arc
@@ -102,6 +102,38 @@
 
 (facts "about svg-path"
   (class (svg-path :id :hi)) => javafx.scene.shape.SVGPath)
+
+(facts "about path"
+  (let [mt (javafx.scene.shape.MoveTo.)
+        lt (javafx.scene.shape.LineTo.)
+        p (path :id :path :elements [mt lt])]
+    (class p) => javafx.scene.shape.Path
+    (config p :elements) => [mt lt]))
+
+;*******************************************************************************
+(facts "about close-path"
+  (class (close-path)) => javafx.scene.shape.ClosePath)
+
+(facts "about move-to"
+  (class (move-to :x 1 :y 2)) => javafx.scene.shape.MoveTo)
+
+(facts "about line-to"
+  (class (line-to :x 1 :y 2)) => javafx.scene.shape.LineTo)
+
+(facts "about h-line-to"
+  (class (h-line-to :x 1)) => javafx.scene.shape.HLineTo)
+
+(facts "about v-line-to"
+  (class (v-line-to :y 2)) => javafx.scene.shape.VLineTo)
+
+(facts "about arc-to"
+  (class (arc-to :x 1 :radius-x 2.0 :y 2 :radius-y 3.0)) => javafx.scene.shape.ArcTo)
+
+(facts "about cubic-curve-to"
+  (class (cubic-curve-to :x 1 :control-x2 2.0 :y 2 :control-y2 3.0)) => javafx.scene.shape.CubicCurveTo)
+
+(facts "about quad-curve-to"
+  (class (quad-curve-to :x 1 :control-x 2.0 :y 2 :control-y 3.0)) => javafx.scene.shape.QuadCurveTo)
 
 ;*******************************************************************************
 
@@ -155,7 +187,7 @@
   (class (password-field)) => javafx.scene.control.PasswordField)
 
 (facts "about html-editor"
-  (run-now 
+  (run-now
     (class (html-editor))) => javafx.scene.web.HTMLEditor)
 
 ;*******************************************************************************
@@ -169,7 +201,7 @@
 (facts "about select"
   (let [b (button :id :b :class :foo)
         c (label :id :c :class :foo)
-        g (group :id :hello :children [b c])] 
+        g (group :id :hello :children [b c])]
     (select g [:#hello]) => g
     (select g [:Group]) => [g]
     (select g [:Button]) => [b]

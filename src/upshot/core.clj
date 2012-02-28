@@ -223,6 +223,35 @@
 (defobject svg-path javafx.scene.shape.SVGPath [shape-options] [])
 (defobject text javafx.scene.text.Text [shape-options] [])
 
+(def ^:private elements-option
+  (default-option :elements
+    (fn [path v]
+      (-> path .getElements (.setAll v)))
+    (fn [g] (-> g .getElements))
+    ["A seq of path elements"]))
+
+(def path-options
+  (merge
+    shape-options
+    (options-for-class javafx.scene.shape.Path)
+    {:elements elements-option}))
+
+(defobject path javafx.scene.shape.Path [path-options] [])
+
+;*******************************************************************************
+; path elements
+
+(def path-element-options (options-for-class javafx.scene.shape.PathElement))
+
+(defobject close-path javafx.scene.shape.ClosePath [path-element-options] [])
+(defobject move-to javafx.scene.shape.MoveTo [path-element-options] [])
+(defobject line-to javafx.scene.shape.LineTo [path-element-options] [])
+(defobject h-line-to javafx.scene.shape.HLineTo [path-element-options] [])
+(defobject v-line-to javafx.scene.shape.VLineTo [path-element-options] [])
+(defobject arc-to javafx.scene.shape.ArcTo [path-element-options] [])
+(defobject cubic-curve-to javafx.scene.shape.CubicCurveTo [path-element-options] [])
+(defobject quad-curve-to javafx.scene.shape.QuadCurveTo [path-element-options] [])
+
 ;*******************************************************************************
 
 (def control-options

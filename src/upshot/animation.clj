@@ -9,9 +9,9 @@
 ;   You must not remove this notice, or any other, from this software.
 
 (ns upshot.animation
-  (:use [upshot.options :only [options-for-class]]
+  (:use [upshot.options :only [options-for-class defobject]]
         [upshot.events :only [to-event-handler]]
-        [seesaw.options :only [apply-options option-provider]])
+        [seesaw.options :only [apply-options option-provider option-map default-option]])
   (:require [clojure.set]
             [seesaw.util]))
 
@@ -56,7 +56,21 @@
     :else (apply key-frame v)))
 
 ;*******************************************************************************
-(def animation-options (options-for-class javafx.animation.Animation))
+(def animation-options
+  (merge
+    (options-for-class javafx.animation.Animation)
+    (option-map
+      (default-option
+        :cycle-count
+        (fn [^javafx.animation.Animation a v]
+          (.setCycleCount a
+                          (if (= :indefinite v)
+                            javafx.animation.Animation/INDEFINITE
+                            v)))
+        (fn [^javafx.animation.Animation a]
+          (.getCycleCount a))
+        ["An integer"
+         :indefinite]))))
 
 (def timeline-options
   (merge
@@ -85,4 +99,13 @@
   [^javafx.animation.Timeline tl]
   (.stop tl)
   tl)
+
+;*******************************************************************************
+
+(def path-transition-options
+  (merge
+    animation-options
+    (options-for-class javafx.animation.PathTransition)))
+
+(defobject path-transition javafx.animation.PathTransition [path-transition-options] [])
 
