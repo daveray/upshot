@@ -192,6 +192,27 @@
 
 ;*******************************************************************************
 
+(facts "about category-axis"
+  (class (category-axis :categories [1 2 "three" 4])) => javafx.scene.chart.CategoryAxis)
+
+(facts "about number-axis"
+  (class (number-axis :lower-bound 3.0 :upper-bound 25.9)) => javafx.scene.chart.NumberAxis)
+
+(facts "about pie-chart"
+  (class (pie-chart)) => javafx.scene.chart.PieChart
+  (let [pc (pie-chart :legend-side :top
+                      :legend-visible? true
+                      :data [["Apples" 99] ["Bananas" 100] ["Kiwi" 22]])]
+    [(config pc :legend-side)
+     (config pc :legend-visible?)]) => [:top true])
+
+(facts "about line-chart"
+  (let [xa (number-axis)
+        ya (number-axis)
+        lc (line-chart :x-axis xa :y-axis ya :data {:a [[1 1] [2 2]]})]
+    (class lc) => javafx.scene.chart.LineChart))
+;*******************************************************************************
+
 (facts "common node options"
   (config (button :id :this-is-the-id) :id) => :this-is-the-id
   (config (button :class :one-class) :class) => #{:one-class}

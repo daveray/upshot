@@ -311,6 +311,75 @@
 (defobject html-editor javafx.scene.web.HTMLEditor [control-options] [])
 
 ;*******************************************************************************
+(def axis-options
+  (merge
+    region-options
+    (options-for-class javafx.scene.chart.Axis)))
+
+(defobject category-axis javafx.scene.chart.CategoryAxis [axis-options]
+  [(option-map
+     (default-option :categories
+        ; TODO this sucks
+       (fn [this categories]
+         (.setCategories this
+                   (javafx.collections.FXCollections/observableArrayList
+                     (map str categories))))
+       (fn [this]
+         (.getCategories this))))])
+
+(defobject value-axis javafx.scene.chart.ValueAxis [axis-options] [])
+(defobject number-axis javafx.scene.chart.NumberAxis [value-axis-options] [])
+
+(def chart-options
+  (merge
+    region-options
+    (options-for-class javafx.scene.chart.Chart)))
+
+(defobject pie-chart javafx.scene.chart.PieChart [chart-options]
+  [(option-map
+     (default-option :data
+        ; TODO this sucks
+       (fn [this data]
+         (.setData this
+                   (javafx.collections.FXCollections/observableArrayList
+                     (for [[n v] data]
+                       (javafx.scene.chart.PieChart$Data. n v)))))
+       (fn [this]
+         (.getData this))))])
+
+(def xy-chart-options
+  (merge
+    chart-options
+    (options-for-class javafx.scene.chart.XYChart)
+    (option-map
+      (default-option :data
+        ; TODO this sucks, omg
+        (fn [this data]
+          (.setData
+            this
+            (javafx.collections.FXCollections/observableArrayList
+              (for [[n series] data]
+                (javafx.scene.chart.XYChart$Series.
+                  (name n)
+                  (javafx.collections.FXCollections/observableArrayList
+                    (for [[x y extra] series]
+                      (javafx.scene.chart.XYChart$Data. x y extra))))))))
+        (fn [this] (.getData this))))))
+
+(def line-chart-options
+  (merge
+    xy-chart-options
+    (options-for-class javafx.scene.chart.LineChart)))
+
+(option-provider javafx.scene.chart.LineChart line-chart-options)
+
+(defn line-chart [& {:keys [x-axis y-axis] :as args}]
+  (apply-options
+    (javafx.scene.chart.LineChart. (or x-axis (number-axis))
+                                   (or y-axis (number-axis)))
+    (dissoc args :x-axis :y-axis)))
+
+;*******************************************************************************
 (extend-protocol seesaw.selection/Selection
   javafx.scene.control.SingleSelectionModel
     (get-selection [this] [(.getSelectedItem this)])
